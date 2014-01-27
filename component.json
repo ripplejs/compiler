@@ -1,0 +1,22 @@
+{
+  "name": "compiler",
+  "repo": "ripplesjs/compiler",
+  "description": "Compile a DOM node using a set of directives and bindings",
+  "version": "0.0.1",
+  "keywords": [],
+  "dependencies": {
+    "anthonyshort/dom-walk": "*",
+    "anthonyshort/attributes": "*",
+    "component/emitter": "*",
+    "ripplejs/observer": "*"
+  },
+  "development": {
+    "component/assert": "*"
+  },
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": [
+    "index.js",
+    "lib/component.js"
+  ]
+}
