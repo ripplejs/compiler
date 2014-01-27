@@ -7,7 +7,7 @@
 
   Install with [component(1)](http://component.io):
 
-    $ component install ripplesjs/compile
+    $ component install ripplesjs/compiler
 
 ## API
 
