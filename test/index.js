@@ -16,7 +16,7 @@ describe('compiler', function(){
 
   it('should have directives', function(){
     var compiler = new Compiler({ foo: 'bar' });
-    assert(compiler.directives.foo === 'bar');
+    assert(compiler.views.foo === 'bar');
   })
 
   it('should be an emitter', function(){
@@ -35,7 +35,7 @@ describe('compiler', function(){
   it('should emit events on nodes', function(done){
     var el = document.createElement('div');
     var compiler = new Compiler();
-    compiler.on('node', function(element){
+    compiler.on('node', function(scope, element){
       assert(element === el);
       done();
     })
@@ -62,12 +62,12 @@ describe('compiler', function(){
       });
       var el = document.createElement('CommentBox');
       el.setAttribute('events', '{ add: this.get("handleAdd") }');
-      var component = compiler.compile(el, {
+      var view = compiler.compile(el, {
         handleAdd: function(){
           done();
         }
       });
-      component.children[0].emit('add');
+      view.children[0].emit('add');
     })
 
   })

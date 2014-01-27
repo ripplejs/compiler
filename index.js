@@ -2,18 +2,18 @@ var walk = require('dom-walk');
 var attributes = require('attributes');
 var emitter = require('emitter');
 var Observer = require('observer');
-var Component = require('./lib/component');
+var View = require('./lib/view');
 
 /**
- * The compiler will take a set of directives, an element and
+ * The compiler will take a set of views, an element and
  * a scope and process each node going down the tree. Whenever
  * it finds a node matching a directive it will process it.
  *
- * @param {Object} directives Element bindings
+ * @param {Object} views Element bindings
  * @param {Object} bindings Attribute bindings
  */
-function Compiler(directives, bindings) {
-  this.directives = directives || {};
+function Compiler(views, bindings) {
+  this.views = views || {};
   this.bindings = bindings || {};
 }
 
@@ -36,7 +36,7 @@ Compiler.prototype.use = function(fn) {
 
 /**
  * Compile a node with a given scope, traversing down
- * the tree and applying all the directives.
+ * the tree and applying all the views.
  *
  * @param {Element} node
  * @param {Scope} scope
@@ -45,13 +45,11 @@ Compiler.prototype.use = function(fn) {
  * @return {Element}
  */
 Compiler.prototype.compile = function(node, data){
-  var self = this;
   this.children = [];
+  this.bindings = [];
   var scope = new Observer(data);
-  walk(node, function(el, next){
-    self.compileNode(scope, el, next);
-  });
-  return new Component(node, this.children);
+  walk(node, this.compileNode.bind(this, scope));
+  return new View(node, this.children, this.bindings);
 };
 
 /**
@@ -65,18 +63,26 @@ Compiler.prototype.compile = function(node, data){
  * @return {void}
  */
 Compiler.prototype.compileNode = function(scope, el, next) {
+  // Text nodes don't do anything, but this gives plugins
+  // a chance to hook in an do something.
   if(el.nodeType === 3) {
     this.emit('text', scope, el);
     return next();
   }
-  this.emit('node', el, scope, next);
-  var directive = this.getDirective(el);
-  if(directive) {
-    this.compileDirective(scope, el, directive, next);
+
+  this.emit('node', scope, el, next);
+
+  // Check to see if this element is a custom view
+  var view = this.getView(el);
+
+  // This node is a custom view
+  if(view) {
+    this.compileViews(scope, el, view);
+    return next();
   }
-  else {
-    this.compileBindings(scope, el, next);
-  }
+
+  // It's a normal element, so just process the bindings
+  this.compileBindings(scope, el, next);
 };
 
 /**
@@ -86,8 +92,8 @@ Compiler.prototype.compileNode = function(scope, el, next) {
  *
  * @return {Function} Returns undefined if it isn't a directive
  */
-Compiler.prototype.getDirective = function(el) {
-  return this.directives[el.nodeName.toLowerCase()];
+Compiler.prototype.getView = function(el) {
+  return this.views[el.nodeName.toLowerCase()];
 };
 
 /**
@@ -99,17 +105,14 @@ Compiler.prototype.getDirective = function(el) {
  *
  * @return {void}
  */
-Compiler.prototype.compileDirective = function(scope, el, directive, next) {
-  var View = this.getDirective(el);
-  if(!View) return;
+Compiler.prototype.compileViews = function(scope, el, View, next) {
   var props = this.getProperties(el);
   var state = new Observer();
-  var view = new View(el, state);
   this.bindProperties(scope, state, props);
+  var view = new View(el, state);
   this.bindEvents(view, scope, el);
   this.children.push(view);
-  this.emit('directive', view, el);
-  next();
+  this.emit('view', scope, el, view, props);
 };
 
 /**
@@ -176,13 +179,15 @@ Compiler.prototype.compileBindings = function(scope, el, next) {
   var attrs = attributes(el);
   for(var attr in attrs) {
     var value = attrs[attr];
-    this.emit('attribute', scope, el, attr, value);
     var obj = this.bindings[attr];
     if(!obj) continue;
     var process = obj.process;
     var options = obj.options;
     var attributeValue = el.getAttribute(obj.name);
-    var result = process.call(this, scope, el, this, next);
+    var binding = process.call(this, scope, el, this);
+    // Options might 1. prevent other bindings, 2. skip processing children
+    this.bindings.push(binding);
+    this.emit('binding', scope, el, binding, obj);
   }
 };
 

@@ -17,6 +17,6 @@
   "main": "index.js",
   "scripts": [
     "index.js",
-    "lib/component.js"
+    "lib/view.js"
   ]
 }
