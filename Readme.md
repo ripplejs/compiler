@@ -13,38 +13,35 @@
 
 ```js
 // Create a new compiler using a set of directives and bindings
-var compiler = new Compiler(directives, bindings);
+var compiler = new Compiler(views, bindings);
 
 // The compile the element into a Component instance
-var component = compiler.compile(el, {
+var view = compiler.compile(el, {
   data: 'to pass to the view for binding',
   open: true
 });
 ```
 
-## Directives
+## Views
 
-Directives are custom elements that can be re-used and have their own views
+Views are custom elements that can be re-used and have their own views
 and compilers that are mounted into the current component being compiled.
 
-The directives passed in must look like this:
+The views passed in must look like this:
 
 ```js
-function CommentBox(el, state, props) {
+function CommentBox(el, state) {
   this.el = el;
+  this.state = state;
 }
 
-var directives = {
+var views = {
   'commentbox': CommentBox
 };
 ```
 
-The constructor is passed the element that is associated with it, an `Observer`
-for state that is solely for this view and a props `Observer` that is immutable
-properties passed down from the parent directive.
-
-If there is no parent directive (it is the root) the props will be an `Observer`
-of the object that was originally passed into the `compile` method.
+The constructor is passed the element that is associated with it and an `Observer`
+for state that is solely for this view.
 
 ## Bindings
 
@@ -54,19 +51,19 @@ of the object that was originally passed into the `compile` method.
   Bindings are an object that look like this:
 
 ```js
-function text(el, scope, value) {
-  scope.change(value, function(newValue){
-    el.textContent = newValue;
-  })
-}
-
 var bindings = {
-  'data-text': text
+  'data-text': function(el, value, scope) {
+    return scope.change(value, function(newValue){
+      el.textContent = newValue;
+    });
+  }
 };
 ```
 
   Bindings are passed the element that contains the attribute, the scope which is
   an `Observer` and the value of the attribute.
+
+  They should return a function for removing the binding.
 
 ## License
 

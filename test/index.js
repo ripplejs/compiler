@@ -42,9 +42,9 @@ describe('compiler', function(){
     compiler.compile(el);
   })
 
-  describe('directives', function(){
+  describe('Views', function(){
 
-    it('should compile directives', function(done){
+    it('should compile views', function(done){
       var compiler = new Compiler({
         'commentbox': function(){
           done();
@@ -54,7 +54,7 @@ describe('compiler', function(){
       compiler.compile(el);
     })
 
-    it('should bind to events if directive is an emitter', function(done){
+    it('should bind to events if view is an emitter', function(done){
       function CommentBox() {}
       emitter(CommentBox.prototype);
       var compiler = new Compiler({
