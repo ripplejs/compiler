@@ -8,7 +8,8 @@
     "anthonyshort/dom-walk": "*",
     "anthonyshort/attributes": "*",
     "component/emitter": "*",
-    "ripplejs/observer": "*"
+    "ripplejs/observer": "*",
+    "ripplejs/view": "*"
   },
   "development": {
     "component/assert": "*"
