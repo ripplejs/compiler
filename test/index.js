@@ -88,5 +88,61 @@ describe('compiler', function(){
     assert(view.el.id === 'baz');
   })
 
+  it('should remove attribute interpolation bindings', function(){
+    var View = createView('<div id="{{foo}}"></div>');
+    var view = new View({
+      foo: 'bar'
+    });
+    compiler.compile(view);
+    view.unbind();
+    view.set('foo', 'baz');
+    assert(view.el.id === 'bar', view.el.id);
+  })
+
+  it('should remove text interpolation bindings', function(){
+    var View = createView('<div>{{foo}}</div>');
+    var view = new View({
+      foo: 'bar'
+    });
+    compiler.compile(view);
+    view.unbind();
+    view.set('foo', 'baz');
+    assert(view.el.innerHTML === 'bar');
+  })
+
+  it('should rebind text interpolation bindings', function(){
+    var View = createView('<div>{{foo}}</div>');
+    var view = new View({
+      foo: 'bar'
+    });
+    compiler.compile(view);
+    view.unbind();
+    view.bind();
+    view.set('foo', 'baz');
+    assert(view.el.innerHTML === 'baz');
+  })
+
+  it('should rebind the attribute interpolation binding', function(){
+    var View = createView('<div id="{{foo}}"></div>');
+    var view = new View({
+      foo: 'bar'
+    });
+    compiler.compile(view);
+    view.unbind();
+    view.bind();
+    view.set('foo', 'baz');
+    assert(view.el.id === 'baz');
+  })
+
+  it('should toggle boolean attributes', function(){
+    var View = createView('<div hidden="{{hidden}}"></div>');
+    var view = new View({
+      hidden: true
+    });
+    compiler.compile(view);
+    assert(view.el.hasAttribute('hidden'));
+    view.set('hidden', false);
+    assert(view.el.hasAttribute('hidden') === false);
+  })
 
 })

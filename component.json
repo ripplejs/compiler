@@ -8,7 +8,8 @@
     "anthonyshort/dom-walk": "*",
     "anthonyshort/attributes": "*",
     "component/emitter": "*",
-    "component/find": "*"
+    "component/find": "*",
+    "anthonyshort/is-boolean-attribute": "*"
   },
   "paths": ["../"],
   "development": {

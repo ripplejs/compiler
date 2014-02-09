@@ -2,8 +2,7 @@ var walk = require('dom-walk');
 var attributes = require('attributes');
 var emitter = require('emitter');
 var find = require('find');
-var Component = require('component');
-var Attribute = require('attribute');
+var isBoolean = require('is-boolean-attribute');
 
 
 /**
@@ -44,10 +43,10 @@ Compiler.prototype.use = function(fn) {
  * @param {Function} View
  * @param {Object} options
  */
-Compiler.prototype.addComponent = function(matches, View) {
+Compiler.prototype.addComponent = function(matches, fn) {
   this.components.push({
     matches: matches,
-    view: View
+    fn: fn
   });
 };
 
@@ -61,10 +60,10 @@ Compiler.prototype.addComponent = function(matches, View) {
  * @param {Function} process
  * @param {Object} options
  */
-Compiler.prototype.addAttribute = function(matches, process) {
+Compiler.prototype.addAttribute = function(matches, fn) {
   this.attributes.push({
     matches: matches,
-    process: process
+    fn: fn
   });
 };
 
@@ -101,14 +100,11 @@ Compiler.prototype.getAttributeBinding = function(attr) {
  * @return {Mixed}
  */
 Compiler.prototype.getBinding = function(name, bindings) {
-  return find(bindings, function(binding){
-    if(name === binding.matches) {
-      return binding;
-    }
-    if(binding.matches.test(name)) {
-      return binding;
-    }
+  var matched = find(bindings, function(binding){
+    return (name === binding.matches || binding.matches.test(name));
   });
+  if(!matched) return undefined;
+  return matched.fn;
 };
 
 
@@ -118,65 +114,138 @@ Compiler.prototype.getBinding = function(name, bindings) {
  *
  * @param {View} view
  *
- * @return {Object}
+ * @return {View}
  */
 Compiler.prototype.compile = function(view){
-
-  // Attach the view to a fragment for speedy parsing
-  var fragment = document.createDocumentFragment();
-  fragment.appendChild(view.el);
-
-  // Store references to the bindings so
-  // that we can dispose of them later
-  var attributeBindings = [];
-  var componentBindings = [];
-
+  var self = this;
+  attachToFragment(view);
   walk(view.el, function(node, next){
-
-    // Render text nodes. Interpolate the text node using the
-    // views interpolate method. Whenever the view model changes
-    // it will re-render the text node.
     if(node.nodeType === 3) {
-      view.interpolate(node.data, function(val){
-        node.data = val;
-      });
-      return next();
+      processText(view, node);
     }
-
-    // Render components. We'll create a view for this component
-    // and bind to any data or events. Then we'll replace the
-    // placeholder node in the template with the rendered view
-    var component = this.getComponentBinding(node);
-    if(component) {
-      componentBindings.push(new Component(view, node, component));
-      return next();
+    else {
+      processNode(self, view, node);
     }
-
-    // Render attributes. If any of the attributes on the node
-    // match one of our bindings we'll run the binding on the node.
-    // Otherwise we'll interpolate the attribute which will update
-    // whenever the view model changes.
-    var attrs = attributes(node);
-
-    Object.keys(attrs).forEach(function(attr){
-      var binding = this.getAttributeBinding(attr);
-      if(!binding) {
-        view.interpolate(attrs[attr], function(val){
-          node.setAttribute(attr, val);
-        });
-        return next();
-      }
-      attributeBindings.push(new Attribute(this, view, node, attr));
-    }, this);
-
     next();
-  }.bind(this));
-
-  // trigger all bindings
-  view.emit('bind');
-
+  });
+  view.bind();
   return view;
 };
+
+
+/**
+ * Attach the view to a DocumentFragment
+ *
+ * @param {View} view
+ *
+ * @return {DocumentFragment}
+ */
+function attachToFragment(view) {
+  var fragment = document.createDocumentFragment();
+  fragment.appendChild(view.el);
+}
+
+
+/**
+ * Process a text node. Interpolate the text node
+ * using the view if possible.
+ *
+ * @param {View} view
+ * @param {Element} node
+ *
+ * @return {void}
+ */
+function processText(view, node) {
+  var text = node.data;
+  view.on('bind', function(){
+    var removeBinding = view.interpolate(text, function(val){
+      node.data = val;
+    });
+    view.once('unbind', removeBinding);
+  });
+}
+
+
+/**
+ * Process a single node on the view. If there is a Component
+ * for this element, we'll create that view and replace the
+ * placeholder element with that component.
+ *
+ * @param {View} view
+ * @param {Element} node
+ *
+ * @return {boolean}
+ */
+function processNode(compiler, view, node) {
+  var Component = compiler.getComponentBinding(node);
+
+  if(!Component) {
+    return processAttributes(compiler, view, node);
+  }
+
+  view.on('bind', function(){
+    var component = new Component();
+    node.parentElement.replaceChild(node, component.el);
+    view.once('unbind', function(){
+      component.unbind();
+    });
+  });
+}
+
+
+/**
+ * Process the attributes on a node. If there is a binding for
+ * an attribute it will run it, otherwise it will try to
+ * interpolate the attributes value using the view
+ *
+ * @param {View} view
+ * @param {Element} node
+ *
+ * @return {void}
+ */
+function processAttributes(compiler, view, node) {
+  var attrs = attributes(node);
+
+  function process(attr){
+    var binding = compiler.getAttributeBinding(attr);
+
+    if(binding) {
+      binding.call(compiler, view, node, attr, attrs[attr]);
+    }
+    else {
+      interpolateAttribute(view, node, attr, attrs);
+    }
+  }
+
+  Object.keys(attrs).forEach(process);
+}
+
+
+/**
+ * Interpolate an attribute on a node using the view
+ *
+ * @param {View} view
+ * @param {Element} node
+ * @param {String} attr
+ *
+ * @api private
+ * @return {void}
+ */
+function interpolateAttribute(view, node, attr) {
+  var attrs = attributes(node);
+
+  view.on('bind', function(){
+    var removeBinding = view.interpolate(attrs[attr], function(val){
+      if(isBoolean(attr) && !val) {
+        node.removeAttribute(attr);
+      }
+      else {
+        node.setAttribute(attr, val);
+      }
+    });
+    view.once('unbind', removeBinding);
+  });
+}
 
 
 /**

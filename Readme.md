@@ -1,7 +1,9 @@
 
 # Compiler
 
-  Compile a DOM node using a set of directives and bindings.
+[![Build Status](https://travis-ci.org/ripplejs/compiler.png?branch=master)](https://travis-ci.org/ripplejs/compiler)
+
+  Compile a view using a set of directives and bindings.
 
 ## Installation
 
