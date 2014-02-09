@@ -8,16 +8,16 @@
     "anthonyshort/dom-walk": "*",
     "anthonyshort/attributes": "*",
     "component/emitter": "*",
-    "ripplejs/observer": "*",
-    "ripplejs/view": "*"
+    "component/find": "*"
   },
+  "paths": ["../"],
   "development": {
-    "component/assert": "*"
+    "component/assert": "*",
+    "ripplejs/view": "*"
   },
   "license": "MIT",
   "main": "index.js",
   "scripts": [
-    "index.js",
-    "lib/view.js"
+    "index.js"
   ]
 }
