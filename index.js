@@ -123,7 +123,7 @@ Compiler.prototype.compile = function(view){
     if(node.nodeType === 3) {
       processText(view, node);
     }
-    else {
+    else if(node.nodeType === 1) {
       processNode(self, view, node);
     }
     next();
@@ -185,7 +185,7 @@ function processNode(compiler, view, node) {
 
   view.on('bind', function(){
     var component = new Component();
-    node.parentElement.replaceChild(node, component.el);
+    // node.parentElement.replaceChild(node, component.el);
     view.once('unbind', function(){
       component.unbind();
     });
