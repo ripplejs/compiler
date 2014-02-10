@@ -101,7 +101,13 @@ Compiler.prototype.getAttributeBinding = function(attr) {
  */
 Compiler.prototype.getBinding = function(name, bindings) {
   var matched = find(bindings, function(binding){
-    return (name === binding.matches || binding.matches.test(name));
+    if(typeof binding.matches === 'string') {
+      if(name === binding.matches) return binding;
+      return;
+    }
+    if(binding.matches.test(name)){
+      return binding;
+    }
   });
   if(!matched) return undefined;
   return matched.fn;
