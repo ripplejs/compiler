@@ -4,7 +4,7 @@ node_js:
   - 0.10
 
 install:
-  - npm install mocha-phantomjs component
+  - npm install mocha-phantomjs component phantomjs
 
 before_script:
   - make build
