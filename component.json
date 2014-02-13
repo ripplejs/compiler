@@ -9,7 +9,8 @@
     "anthonyshort/attributes": "*",
     "component/emitter": "*",
     "component/find": "*",
-    "anthonyshort/is-boolean-attribute": "*"
+    "anthonyshort/is-boolean-attribute": "*",
+    "wilsonpage/fastdom": "v0.8.4"
   },
   "paths": ["../"],
   "development": {

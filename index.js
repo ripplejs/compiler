@@ -3,6 +3,7 @@ var attributes = require('attributes');
 var emitter = require('emitter');
 var find = require('find');
 var isBoolean = require('is-boolean-attribute');
+var dom = require('fastdom');
 
 
 /**
@@ -165,7 +166,9 @@ function processText(view, node) {
   var text = node.data;
   view.on('bind', function(){
     var removeBinding = view.interpolate(text, function(val){
-      node.data = val;
+      dom.write(function(){
+        node.data = val;
+      });
     });
     view.once('unbind', removeBinding);
   });
@@ -242,12 +245,14 @@ function interpolateAttribute(view, node, attr) {
 
   view.on('bind', function(){
     var removeBinding = view.interpolate(attrs[attr], function(val){
-      if(isBoolean(attr) && !val) {
-        node.removeAttribute(attr);
-      }
-      else {
-        node.setAttribute(attr, val);
-      }
+      dom.write(function(){
+        if(isBoolean(attr) && !val) {
+          node.removeAttribute(attr);
+        }
+        else {
+          node.setAttribute(attr, val);
+        }
+      });
     });
     view.once('unbind', removeBinding);
   });

@@ -2,6 +2,7 @@ var Compiler = require('compiler');
 var assert = require('assert');
 var emitter = require('emitter');
 var createView = require('view');
+var dom = require('fastdom');
 
 describe('compiler', function(){
   var compiler;
@@ -20,8 +21,10 @@ describe('compiler', function(){
   it('should match attributes with a string', function(done){
     var compiler = new Compiler();
     compiler.addAttribute('data-test', function(view, el, attr, value){
-      assert(value === "foo");
-      done();
+      dom.defer(1, function(){
+        assert(value === "foo");
+        done();
+      });
     });
     var View = createView('<div data-test="foo"></div>');
     var view = new View();
@@ -50,13 +53,25 @@ describe('compiler', function(){
     compiler.compile(view);
   });
 
-  it('should interpolate text nodes', function(){
+  it('should interpolate text nodes', function(done){
     var View = createView('<div>{{foo}}</div>');
     var view = new View({
       foo: 'bar'
     });
     compiler.compile(view);
-    assert(view.el.innerHTML === 'bar');
+    dom.defer(function(){
+      assert(view.el.innerHTML === 'bar');
+      done();
+    });
+  })
+
+  it('should batch text node interpolation', function(){
+    var View = createView('<div>{{foo}}</div>');
+    var view = new View({
+      foo: 'bar'
+    });
+    compiler.compile(view);
+    assert(view.el.innerHTML !== 'bar');
   })
 
   it('should update interpolated text nodes', function(){
@@ -66,7 +81,9 @@ describe('compiler', function(){
     });
     compiler.compile(view);
     view.set('foo', 'baz');
-    assert(view.el.innerHTML === 'baz');
+    dom.defer(function(){
+      assert(view.el.innerHTML === 'baz');
+    });
   })
 
   it('should interpolate attributes', function(){
@@ -75,7 +92,9 @@ describe('compiler', function(){
       foo: 'bar'
     });
     compiler.compile(view);
-    assert(view.el.id === 'bar');
+    dom.defer(function(){
+      assert(view.el.id === 'bar');
+    });
   })
 
   it('should update interpolated attributes', function(){
@@ -85,7 +104,9 @@ describe('compiler', function(){
     });
     compiler.compile(view);
     view.set('foo', 'baz');
-    assert(view.el.id === 'baz');
+    dom.defer(function(){
+      assert(view.el.id === 'baz');
+    });
   })
 
   it('should remove attribute interpolation bindings', function(){
@@ -96,7 +117,9 @@ describe('compiler', function(){
     compiler.compile(view);
     view.unbind();
     view.set('foo', 'baz');
-    assert(view.el.id === 'bar', view.el.id);
+    dom.defer(function(){
+      assert(view.el.id === 'bar', view.el.id);
+    });
   })
 
   it('should remove text interpolation bindings', function(){
@@ -107,7 +130,9 @@ describe('compiler', function(){
     compiler.compile(view);
     view.unbind();
     view.set('foo', 'baz');
-    assert(view.el.innerHTML === 'bar');
+    dom.defer(function(){
+      assert(view.el.innerHTML === 'bar');
+    });
   })
 
   it('should rebind text interpolation bindings', function(){
@@ -119,7 +144,9 @@ describe('compiler', function(){
     view.unbind();
     view.bind();
     view.set('foo', 'baz');
-    assert(view.el.innerHTML === 'baz');
+    dom.defer(function(){
+      assert(view.el.innerHTML === 'baz');
+    });
   })
 
   it('should rebind the attribute interpolation binding', function(){
@@ -131,7 +158,9 @@ describe('compiler', function(){
     view.unbind();
     view.bind();
     view.set('foo', 'baz');
-    assert(view.el.id === 'baz');
+    dom.defer(function(){
+      assert(view.el.id === 'baz');
+    });
   })
 
   it('should toggle boolean attributes', function(){
@@ -140,9 +169,13 @@ describe('compiler', function(){
       hidden: true
     });
     compiler.compile(view);
-    assert(view.el.hasAttribute('hidden'));
-    view.set('hidden', false);
-    assert(view.el.hasAttribute('hidden') === false);
+    dom.defer(function(){
+      assert(view.el.hasAttribute('hidden'));
+      view.set('hidden', false);
+      dom.defer(function(){
+        assert(view.el.hasAttribute('hidden') === false);
+      });
+    });
   })
 
 })
