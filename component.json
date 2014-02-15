@@ -12,13 +12,11 @@
     "anthonyshort/is-boolean-attribute": "*",
     "wilsonpage/fastdom": "v0.8.4"
   },
-  "paths": ["../"],
   "development": {
     "component/assert": "*",
     "ripplejs/view": "*"
   },
   "license": "MIT",
-  "main": "index.js",
   "scripts": [
     "index.js"
   ]

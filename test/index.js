@@ -53,7 +53,7 @@ describe('compiler', function(){
     compiler.compile(view);
   });
 
-  it('should interpolate text nodes', function(done){
+  it.skip('should interpolate text nodes', function(done){
     var View = createView('<div>{{foo}}</div>');
     var view = new View({
       foo: 'bar'
