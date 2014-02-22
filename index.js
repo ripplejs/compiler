@@ -4,6 +4,22 @@ var emitter = require('emitter');
 var find = require('find');
 var isBoolean = require('is-boolean-attribute');
 var dom = require('fastdom');
+var Interpolator = require('interpolate');
+var domify = require('domify');
+
+
+/**
+ * Attach the view to a DocumentFragment
+ *
+ * @param {View} view
+ *
+ * @return {DocumentFragment}
+ */
+function attachToFragment(el) {
+  var fragment = document.createDocumentFragment();
+  fragment.appendChild(el);
+  return fragment;
+}
 
 
 /**
@@ -13,12 +29,13 @@ var dom = require('fastdom');
  */
 function Compiler() {
   this.components = [];
-  this.attributes = [];
+  this.directives = [];
+  this.interpolator = new Interpolator();
 }
 
 
 /**
- * Mixin emitter
+ * Mixins
  */
 emitter(Compiler.prototype);
 
@@ -44,11 +61,12 @@ Compiler.prototype.use = function(fn) {
  * @param {Function} View
  * @param {Object} options
  */
-Compiler.prototype.addComponent = function(matches, fn) {
+Compiler.prototype.component = function(matches, fn) {
   this.components.push({
     matches: matches,
     fn: fn
   });
+  return this;
 };
 
 
@@ -61,11 +79,37 @@ Compiler.prototype.addComponent = function(matches, fn) {
  * @param {Function} process
  * @param {Object} options
  */
-Compiler.prototype.addAttribute = function(matches, fn) {
-  this.attributes.push({
+Compiler.prototype.directive = function(matches, fn) {
+  this.directives.push({
     matches: matches,
     fn: fn
   });
+  return this;
+};
+
+
+/**
+ * Add an expression filter
+ *
+ * @param {String} name
+ * @param {Function} fn
+ */
+Compiler.prototype.filter = function(name, fn) {
+  this.interpolator.filter(name, fn);
+  return this;
+};
+
+
+/**
+ * Set the template delimiters
+ *
+ * @param {Regex} match
+ *
+ * @return {View}
+ */
+Compiler.prototype.delimiters = function(match) {
+  this.interpolator.delimiters(match);
+  return this;
 };
 
 
@@ -89,7 +133,7 @@ Compiler.prototype.getComponentBinding = function(el) {
  * @return {Mixed}
  */
 Compiler.prototype.getAttributeBinding = function(attr) {
-  return this.getBinding(attr, this.attributes);
+  return this.getBinding(attr, this.directives);
 };
 
 
@@ -116,41 +160,70 @@ Compiler.prototype.getBinding = function(name, bindings) {
 
 
 /**
- * Compile a node with a given scope, traversing down
- * the tree and applying all the views.
+ * Compile a template into an element and
+ * bind it to this view
  *
- * @param {View} view
- *
- * @return {View}
+ * @return {Element}
  */
-Compiler.prototype.compile = function(view){
+Compiler.prototype.render = function(view, el) {
   var self = this;
-  attachToFragment(view);
-  walk(view.el, function(node, next){
+  this.view = view;
+  attachToFragment(el);
+  walk(el, function(node, next){
     if(node.nodeType === 3) {
-      processText(view, node);
+      self.processTextNode(node);
     }
     else if(node.nodeType === 1) {
-      processNode(self, view, node);
+      self.processNode(node);
     }
     next();
   });
-  view.bind();
-  return view;
+  this.view = null;
+  return el;
 };
 
 
 /**
- * Attach the view to a DocumentFragment
+ * Run an interpolation on the string using the state. Whenever
+ * the model changes it will render the string again
  *
- * @param {View} view
+ * @param {String} str
+ * @param {Function} callback
  *
- * @return {DocumentFragment}
+ * @return {Function} a function to unbind the interpolation
  */
-function attachToFragment(view) {
-  var fragment = document.createDocumentFragment();
-  fragment.appendChild(view.el);
-}
+Compiler.prototype.interpolate = function(str, callback) {
+  var self = this;
+  var view = this.view;
+
+  if( this.hasInterpolation(str) === false ) {
+    return callback(str);
+  }
+
+  var attrs = this.interpolator.props(str);
+
+  function render() {
+    return self.interpolator.value(str, view.get(attrs));
+  }
+
+  callback(render());
+
+  view.change(attrs, function(){
+    callback(render());
+  });
+};
+
+
+/**
+ * Check if a string has expressions
+ *
+ * @param {String} str
+ *
+ * @return {Boolean}
+ */
+Compiler.prototype.hasInterpolation = function(str) {
+  return this.interpolator.has(str);
+};
 
 
 /**
@@ -162,17 +235,13 @@ function attachToFragment(view) {
  *
  * @return {void}
  */
-function processText(view, node) {
-  var text = node.data;
-  view.on('bind', function(){
-    var removeBinding = view.interpolate(text, function(val){
-      dom.write(function(){
-        node.data = val;
-      });
+Compiler.prototype.processTextNode = function(node) {
+  this.interpolate(node.data, function(val){
+    dom.write(function(){
+      node.data = val;
     });
-    view.once('unbind', removeBinding);
   });
-}
+};
 
 
 /**
@@ -185,21 +254,48 @@ function processText(view, node) {
  *
  * @return {boolean}
  */
-function processNode(compiler, view, node) {
-  var Component = compiler.getComponentBinding(node);
+Compiler.prototype.processNode = function(node) {
+  var view = this.view;
+
+  var Component = this.getComponentBinding(node);
 
   if(!Component) {
-    return processAttributes(compiler, view, node);
+    return this.processAttributes(node);
   }
 
-  view.on('bind', function(){
-    var component = new Component();
-    // node.parentElement.replaceChild(node, component.el);
-    view.once('unbind', function(){
-      component.unbind();
-    });
+  var component = Component.create({
+    owner: view,
+    template: (node.innerHTML !== "") ? node.innerHTML : null
   });
-}
+
+  for (var i = node.attributes.length - 1; i >= 0; i--) {
+    var attr = node.attributes[i];
+
+    // Bind events
+    if(attr.name.indexOf('on-') === 0) {
+      var eventName = attr.name.replace('on-', '');
+      var method = attr.value;
+      var fn = view[method];
+      if(!fn) throw new Error('Missing method');
+      component.on(eventName, fn.bind(view));
+    }
+
+    // Bind properties
+    else {
+      this.interpolate(attr.value, function(val){
+        component.set(attr.name, val);
+      });
+    }
+  }
+
+  view.once('mount', function(){
+    component.mount(node, true);
+  });
+
+  view.on('destroy', function(){
+    component.destroy();
+  });
+};
 
 
 /**
@@ -212,22 +308,21 @@ function processNode(compiler, view, node) {
  *
  * @return {void}
  */
-function processAttributes(compiler, view, node) {
+Compiler.prototype.processAttributes = function(node) {
+  var view = this.view;
+  var self = this;
   var attrs = attributes(node);
-
   function process(attr){
-    var binding = compiler.getAttributeBinding(attr);
-
+    var binding = self.getAttributeBinding(attr);
     if(binding) {
-      binding.call(compiler, view, node, attr, attrs[attr]);
+      binding.call(self, view, node, attr, attrs[attr]);
     }
     else {
-      interpolateAttribute(view, node, attr, attrs);
+      self.interpolateAttribute(node, attr);
     }
   }
-
   Object.keys(attrs).forEach(process);
-}
+};
 
 
 /**
@@ -240,28 +335,96 @@ function processAttributes(compiler, view, node) {
  * @api private
  * @return {void}
  */
-function interpolateAttribute(view, node, attr) {
+Compiler.prototype.interpolateAttribute = function(node, attr) {
   var attrs = attributes(node);
-
-  view.on('bind', function(){
-    var removeBinding = view.interpolate(attrs[attr], function(val){
-      dom.write(function(){
-        if(isBoolean(attr) && !val) {
-          node.removeAttribute(attr);
-        }
-        else {
-          node.setAttribute(attr, val);
-        }
-      });
+  this.interpolate(attrs[attr], function(val){
+    dom.write(function(){
+      if(isBoolean(attr) && !val) {
+        node.removeAttribute(attr);
+      }
+      else {
+        node.setAttribute(attr, val);
+      }
     });
-    view.once('unbind', removeBinding);
   });
-}
+};
 
 
-/**
- * Exports
- *
- * @type {Function}
- */
-module.exports = Compiler;
+module.exports = function(View){
+
+  /**
+   * Compiler that renders binds the model to
+   * the DOM elements and manages the bindings
+   *
+   * @type {Compiler}
+   */
+  var compiler = new Compiler();
+
+
+  /**
+   * Add a component
+   *
+   * @param {String} match
+   * @param {Function} fn
+   *
+   * @return {View}
+   */
+  View.component = function(match, fn) {
+    compiler.component(match, fn);
+    return this;
+  };
+
+
+  /**
+   * Add a directive
+   *
+   * @param {String|Regex} match
+   * @param {Function} fn
+   *
+   * @return {View}
+   */
+  View.directive = function(match, fn) {
+    compiler.directive(match, fn);
+    return this;
+  };
+
+
+  /**
+   * Add an interpolation filter
+   *
+   * @param {String} name
+   * @param {Function} fn
+   *
+   * @return {View}
+   */
+  View.filter = function(name, fn) {
+    compiler.filter(name, fn);
+    return this;
+  };
+
+
+  /**
+   * Set the expression delimiters
+   *
+   * @param {Regex} match
+   *
+   * @return {View}
+   */
+  View.delimiters = function(match) {
+    compiler.delimiters(match);
+    return this;
+  };
+
+
+  /**
+   * Render the view using the compiler
+   *
+   * @return {Element}
+   */
+  View.prototype.render = function() {
+    var el = domify(this.template);
+    return compiler.render(this, el);
+  };
+
+
+};

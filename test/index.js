@@ -1,181 +1,282 @@
-var Compiler = require('compiler');
+var compiler = require('compiler');
 var assert = require('assert');
-var emitter = require('emitter');
 var createView = require('view');
 var dom = require('fastdom');
 
 describe('compiler', function(){
-  var compiler;
+  var View;
 
   beforeEach(function(){
-    compiler = new Compiler();
+    View = createView('<div></div>').use(compiler);
   });
 
-  it('should compile a view', function(){
-    var compiler = new Compiler();
-    var View = createView('<div></div>');
-    var view = new View();
-    compiler.compile(view);
-  })
 
-  it('should match attributes with a string', function(done){
-    var compiler = new Compiler();
-    compiler.addAttribute('data-test', function(view, el, attr, value){
-      dom.defer(1, function(){
+  describe('lifecycle', function () {
+
+    it.skip('should render when the view is created', function () {
+
+    });
+
+    it.skip('should enable bindings until view is mounted', function () {
+
+    });
+
+    it.skip('should disable all binding when unmounted', function(){
+
+    })
+
+    it.skip('should trigger all bindings before element is mounted', function () {
+
+    });
+
+    it.skip('should destroy all bindings when the view is destroyed', function () {
+
+    });
+
+    it.skip('should not be able to be rendered once destroyed', function () {
+
+    });
+
+  });
+
+  describe('directives', function () {
+
+    it('should match directives with a string', function(done){
+      View = createView('<div data-test="foo"></div>').use(compiler);
+      View.directive('data-test', function(view, el, attr, value){
+        dom.defer(function(){
+          assert(value === "foo");
+          done();
+        });
+      });
+      var view = new View();
+    });
+
+    it('should match directives with a regex', function(done){
+      View = createView('<div data-test="foo"></div>').use(compiler);
+      View.directive(/test/, function(view, el, attr, value){
         assert(value === "foo");
         done();
       });
+      var view = new View();
     });
-    var View = createView('<div data-test="foo"></div>');
-    var view = new View();
-    compiler.compile(view);
+
   });
 
-  it('should match attributes with a regex', function(done){
-    var compiler = new Compiler();
-    compiler.addAttribute(/test/, function(view, el, attr, value){
-      assert(value === "foo");
-      done();
-    });
-    var View = createView('<div data-test="foo"></div>');
-    var view = new View();
-    compiler.compile(view);
-  });
 
-  it('should match components with a string', function(done){
-    var compiler = new Compiler();
-    function Dummy(){
-      done();
-    }
-    compiler.addComponent('dummy', Dummy);
-    var View = createView('<dummy></dummy>');
-    var view = new View();
-    compiler.compile(view);
-  });
+  describe('components', function () {
 
-  it.skip('should interpolate text nodes', function(done){
-    var View = createView('<div>{{foo}}</div>');
-    var view = new View({
-      foo: 'bar'
-    });
-    compiler.compile(view);
-    dom.defer(function(){
-      assert(view.el.innerHTML === 'bar');
-      done();
-    });
-  })
-
-  it('should batch text node interpolation', function(){
-    var View = createView('<div>{{foo}}</div>');
-    var view = new View({
-      foo: 'bar'
-    });
-    compiler.compile(view);
-    assert(view.el.innerHTML !== 'bar');
-  })
-
-  it('should update interpolated text nodes', function(){
-    var View = createView('<div>{{foo}}</div>');
-    var view = new View({
-      foo: 'bar'
-    });
-    compiler.compile(view);
-    view.set('foo', 'baz');
-    dom.defer(function(){
-      assert(view.el.innerHTML === 'baz');
-    });
-  })
-
-  it('should interpolate attributes', function(){
-    var View = createView('<div id="{{foo}}"></div>');
-    var view = new View({
-      foo: 'bar'
-    });
-    compiler.compile(view);
-    dom.defer(function(){
-      assert(view.el.id === 'bar');
-    });
-  })
-
-  it('should update interpolated attributes', function(){
-    var View = createView('<div id="{{foo}}"></div>');
-    var view = new View({
-      foo: 'bar'
-    });
-    compiler.compile(view);
-    view.set('foo', 'baz');
-    dom.defer(function(){
-      assert(view.el.id === 'baz');
-    });
-  })
-
-  it('should remove attribute interpolation bindings', function(){
-    var View = createView('<div id="{{foo}}"></div>');
-    var view = new View({
-      foo: 'bar'
-    });
-    compiler.compile(view);
-    view.unbind();
-    view.set('foo', 'baz');
-    dom.defer(function(){
-      assert(view.el.id === 'bar', view.el.id);
-    });
-  })
-
-  it('should remove text interpolation bindings', function(){
-    var View = createView('<div>{{foo}}</div>');
-    var view = new View({
-      foo: 'bar'
-    });
-    compiler.compile(view);
-    view.unbind();
-    view.set('foo', 'baz');
-    dom.defer(function(){
-      assert(view.el.innerHTML === 'bar');
-    });
-  })
-
-  it('should rebind text interpolation bindings', function(){
-    var View = createView('<div>{{foo}}</div>');
-    var view = new View({
-      foo: 'bar'
-    });
-    compiler.compile(view);
-    view.unbind();
-    view.bind();
-    view.set('foo', 'baz');
-    dom.defer(function(){
-      assert(view.el.innerHTML === 'baz');
-    });
-  })
-
-  it('should rebind the attribute interpolation binding', function(){
-    var View = createView('<div id="{{foo}}"></div>');
-    var view = new View({
-      foo: 'bar'
-    });
-    compiler.compile(view);
-    view.unbind();
-    view.bind();
-    view.set('foo', 'baz');
-    dom.defer(function(){
-      assert(view.el.id === 'baz');
-    });
-  })
-
-  it('should toggle boolean attributes', function(){
-    var View = createView('<div hidden="{{hidden}}"></div>');
-    var view = new View({
-      hidden: true
-    });
-    compiler.compile(view);
-    dom.defer(function(){
-      assert(view.el.hasAttribute('hidden'));
-      view.set('hidden', false);
+    it('should match components with a string', function(done){
+      var Parent = createView('<div><dummy></dummy></div>').use(compiler);
+      var Child = createView('<div id="child"></div>');
+      Parent.component('dummy', Child);
+      var view = new Parent();
+      view.mount(document.body);
       dom.defer(function(){
-        assert(view.el.hasAttribute('hidden') === false);
+        assert(view.el.firstChild.id === "child");
+        view.unmount();
+        done();
       });
     });
-  })
+
+    it('should pass data to the component', function (done) {
+      var Parent = createView('<div><dummy foo="bar"></dummy></div>').use(compiler);
+      var Child = createView('<div id="{{foo}}"></div>').use(compiler);
+      Parent.component('dummy', Child);
+      var view = new Parent();
+      view.mount(document.body);
+      dom.defer(function(){
+        assert(view.el.firstChild.id === "bar");
+        view.unmount();
+        done();
+      });
+    });
+
+    it('should pass data as an expression to the component', function (done) {
+      var Parent = createView('<div><dummy color="{{color}}"></dummy></div>').use(compiler);
+      var Child = createView('<div id="{{color}}"></div>').use(compiler);
+      Parent.component('dummy', Child);
+      var view = new Parent({
+        color: 'red'
+      });
+      view.mount(document.body);
+      dom.defer(function(){
+        assert(view.el.firstChild.id === "red");
+        view.unmount();
+        done();
+      });
+    });
+
+    it('should pass dynamic data to the component', function (done) {
+      var Parent = createView('<div><dummy color="{{color}}"></dummy></div>').use(compiler);
+      var Child = createView('<div id="{{color}}"></div>').use(compiler);
+      Parent.component('dummy', Child);
+      var view = new Parent({
+        color: 'red'
+      });
+      view.mount(document.body);
+      view.set('color', 'blue');
+      dom.defer(function(){
+        assert(view.el.firstChild.id === "blue");
+        view.unmount();
+        done();
+      });
+    });
+
+    it('should pass raw data to the component', function (done) {
+      var Parent = createView('<div><dummy colors="{{colors}}"></dummy></div>').use(compiler);
+      var Child = createView('<div id="{{colors | dashed}}"></div>').use(compiler);
+      Parent.component('dummy', Child);
+      Child.filter('dashed', function(arr){
+        return arr.join('-');
+      });
+      var view = new Parent({
+        colors: ['red','blue','green']
+      });
+      view.mount(document.body);
+      dom.defer(function(){
+        assert(view.el.firstChild.id === "red-blue-green");
+        view.unmount();
+        done();
+      });
+    });
+
+    it('should use a custom template', function (done) {
+      var Parent = createView('<div><dummy color="blue"><div>{{color}}</div></dummy></div>').use(compiler);
+      var Child = createView('<div id="{{color}}"></div>').use(compiler);
+      Parent.component('dummy', Child);
+      var view = new Parent();
+      view.mount(document.body);
+      dom.defer(function(){
+        assert(view.el.firstChild.id === "");
+        assert(view.el.firstChild.innerHTML === "blue");
+        view.unmount();
+        done();
+      });
+    });
+
+    it('should lookup data from the parent', function (done) {
+      var Parent = createView('<div><dummy></dummy></div>').use(compiler);
+      var Child = createView('<div id="{{color}}"></div>').use(compiler);
+      Parent.component('dummy', Child);
+      var view = new Parent({
+        color: 'blue'
+      });
+      view.mount(document.body);
+      dom.defer(function(){
+        assert(view.el.firstChild.id === "blue");
+        view.unmount();
+        done();
+      });
+    });
+
+  });
+
+  describe('text interpolation', function () {
+
+    it('should interpolate text nodes', function(done){
+      var View = createView('<div>{{foo}}</div>').use(compiler);
+      var view = new View({
+        foo: 'bar'
+      });
+      dom.defer(function(){
+        assert(view.el.innerHTML === 'bar');
+        done();
+      });
+    })
+
+    it('should batch text node interpolation', function(){
+      var View = createView('<div>{{foo}}</div>').use(compiler);
+      var view = new View({
+        foo: 'bar'
+      });
+      assert(view.el.innerHTML !== 'bar');
+    })
+
+    it('should update interpolated text nodes', function(done){
+      var View = createView('<div>{{foo}}</div>').use(compiler);
+      var view = new View({
+        foo: 'bar'
+      });
+      view.set('foo', 'baz');
+      dom.defer(function(){
+        assert(view.el.innerHTML === 'baz');
+        done();
+      });
+    })
+
+  });
+
+
+  describe('attribute interpolation', function () {
+
+   it('should interpolate attributes', function(done){
+      var View = createView('<div id="{{foo}}"></div>').use(compiler);
+      var view = new View({
+        foo: 'bar'
+      });
+      dom.defer(function(){
+        assert(view.el.id === 'bar');
+        done();
+      });
+    })
+
+    it('should update interpolated attributes', function(){
+      var View = createView('<div id="{{foo}}"></div>').use(compiler);
+      var view = new View({
+        foo: 'bar'
+      });
+      view.set('foo', 'baz');
+      dom.defer(function(){
+        assert(view.el.id === 'baz');
+      });
+    })
+
+    it('should toggle boolean attributes', function(){
+      var View = createView('<div hidden="{{hidden}}"></div>').use(compiler);
+      var view = new View({
+        hidden: true
+      });
+      dom.defer(function(){
+        assert(view.el.hasAttribute('hidden'));
+        view.set('hidden', false);
+        dom.defer(function(){
+          assert(view.el.hasAttribute('hidden') === false);
+        });
+      });
+    })
+
+
+  });
+
+  describe('interpolation settings', function () {
+
+    it('should change delimiters', function (done) {
+      var View = createView('<div id="<% foo %>"></div>').use(compiler);
+      View.delimiters(/\<\%(.*?)\%\>/g);
+      var view = new View({
+        foo: 'bar'
+      });
+      dom.defer(function(){
+        assert(view.el.id === "bar");
+        done();
+      });
+    })
+
+    it('should add filters', function (done) {
+      var View = createView('<div>{{foo | caps}}</div>').use(compiler);
+      View.filter('caps', function(val){
+        return val.toUpperCase();
+      });
+      var view = new View({
+        foo: 'bar'
+      });
+      dom.defer(function(){
+        assert(view.el.innerHTML === "BAR");
+        done();
+      });
+    })
+
+  });
 
 })

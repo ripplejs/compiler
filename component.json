@@ -10,11 +10,13 @@
     "component/emitter": "*",
     "component/find": "*",
     "anthonyshort/is-boolean-attribute": "*",
-    "wilsonpage/fastdom": "v0.8.4"
+    "wilsonpage/fastdom": "v0.8.4",
+    "ripplejs/interpolate": "0.2.1",
+    "component/domify": "*"
   },
   "development": {
     "component/assert": "*",
-    "ripplejs/view": "*"
+    "ripplejs/view": "0.0.6"
   },
   "license": "MIT",
   "scripts": [
