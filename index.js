@@ -290,6 +290,7 @@ Compiler.prototype.processNode = function(node) {
 
   view.once('mount', function(){
     component.mount(node, true);
+    if(node === this.el) this.el = component.el;
   });
 
   view.on('destroy', function(){

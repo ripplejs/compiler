@@ -170,6 +170,19 @@ describe('compiler', function(){
       });
     });
 
+    it('should allow a component as the root element', function (done) {
+      var Parent = createView('<dummy></dummy>').use(compiler);
+      var Child = createView('<div id="blue"></div>').use(compiler);
+      Parent.component('dummy', Child);
+      var view = new Parent();
+      view.mount(document.body);
+      dom.defer(function(){
+        assert(view.el.id === "blue");
+        view.unmount();
+        done();
+      });
+    });
+
   });
 
   describe('text interpolation', function () {
