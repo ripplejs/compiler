@@ -370,7 +370,7 @@ module.exports = function(View){
    *
    * @return {View}
    */
-  View.component = function(match, fn) {
+  View.compose = function(match, fn) {
     compiler.component(match, fn);
     return this;
   };

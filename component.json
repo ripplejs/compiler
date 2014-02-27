@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "keywords": [],
   "dependencies": {
-    "anthonyshort/dom-walk": "0.0.2",
+    "anthonyshort/dom-walk": "0.0.3",
     "anthonyshort/attributes": "*",
     "component/emitter": "*",
     "component/find": "*",

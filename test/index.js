@@ -69,7 +69,7 @@ describe('compiler', function(){
     it('should match components with a string', function(done){
       var Parent = createView('<div><dummy></dummy></div>').use(compiler);
       var Child = createView('<div id="child"></div>');
-      Parent.component('dummy', Child);
+      Parent.compose('dummy', Child);
       var view = new Parent();
       view.mount(document.body);
       dom.defer(function(){
@@ -82,7 +82,7 @@ describe('compiler', function(){
     it('should pass data to the component', function (done) {
       var Parent = createView('<div><dummy foo="bar"></dummy></div>').use(compiler);
       var Child = createView('<div id="{{foo}}"></div>').use(compiler);
-      Parent.component('dummy', Child);
+      Parent.compose('dummy', Child);
       var view = new Parent();
       view.mount(document.body);
       dom.defer(function(){
@@ -95,7 +95,7 @@ describe('compiler', function(){
     it('should pass data as an expression to the component', function (done) {
       var Parent = createView('<div><dummy color="{{color}}"></dummy></div>').use(compiler);
       var Child = createView('<div id="{{color}}"></div>').use(compiler);
-      Parent.component('dummy', Child);
+      Parent.compose('dummy', Child);
       var view = new Parent({
         color: 'red'
       });
@@ -110,7 +110,7 @@ describe('compiler', function(){
     it('should pass dynamic data to the component', function (done) {
       var Parent = createView('<div><dummy color="{{color}}"></dummy></div>').use(compiler);
       var Child = createView('<div id="{{color}}"></div>').use(compiler);
-      Parent.component('dummy', Child);
+      Parent.compose('dummy', Child);
       var view = new Parent({
         color: 'red'
       });
@@ -126,7 +126,7 @@ describe('compiler', function(){
     it('should pass raw data to the component', function (done) {
       var Parent = createView('<div><dummy colors="{{colors}}"></dummy></div>').use(compiler);
       var Child = createView('<div id="{{colors | dashed}}"></div>').use(compiler);
-      Parent.component('dummy', Child);
+      Parent.compose('dummy', Child);
       Child.filter('dashed', function(arr){
         return arr.join('-');
       });
@@ -144,7 +144,7 @@ describe('compiler', function(){
     it('should use a custom template', function (done) {
       var Parent = createView('<div><dummy color="blue"><div>{{color}}</div></dummy></div>').use(compiler);
       var Child = createView('<div id="{{color}}"></div>').use(compiler);
-      Parent.component('dummy', Child);
+      Parent.compose('dummy', Child);
       var view = new Parent();
       view.mount(document.body);
       dom.defer(function(){
@@ -158,7 +158,7 @@ describe('compiler', function(){
     it('should lookup data from the parent', function (done) {
       var Parent = createView('<div><dummy></dummy></div>').use(compiler);
       var Child = createView('<div id="{{color}}"></div>').use(compiler);
-      Parent.component('dummy', Child);
+      Parent.compose('dummy', Child);
       var view = new Parent({
         color: 'blue'
       });
@@ -173,7 +173,7 @@ describe('compiler', function(){
     it('should allow a component as the root element', function (done) {
       var Parent = createView('<dummy></dummy>').use(compiler);
       var Child = createView('<div id="blue"></div>').use(compiler);
-      Parent.component('dummy', Child);
+      Parent.compose('dummy', Child);
       var view = new Parent();
       view.mount(document.body);
       dom.defer(function(){
