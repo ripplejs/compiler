@@ -218,6 +218,101 @@ describe('compiler', function(){
       });
     })
 
+    it('should handle elements as values', function(done){
+      var test = document.createElement('div');
+      var View = createView('<div>{{foo}}</div>').use(compiler);
+      var view = new View({
+        foo: test
+      });
+      dom.defer(function(){
+        assert(view.el.firstChild === test);
+        done();
+      });
+    })
+
+    it('should update elements as values', function(done){
+      var test = document.createElement('div');
+      var test2 = document.createElement('ul');
+      var View = createView('<div>{{foo}}</div>').use(compiler);
+      var view = new View({
+        foo: test
+      });
+      view.set('foo', test2);
+      dom.defer(function(){
+        assert(view.el.firstChild === test2);
+        done();
+      });
+    })
+
+    it('should handle when the value is no longer an element', function(done){
+      var test = document.createElement('div');
+      var View = createView('<div>{{foo}}</div>').use(compiler);
+      var view = new View({
+        foo: test
+      });
+      view.set('foo', 'bar');
+      dom.defer(function(){
+        assert(view.el.innerHTML === 'bar');
+        done();
+      });
+    });
+
+    it('should return undefined values as an empty string', function(done){
+      var View = createView('<div>{{foo}}</div>').use(compiler);
+      var view = new View({
+        foo: undefined
+      });
+      dom.defer(function(){
+        assert(view.el.innerHTML === '');
+        done();
+      });
+    });
+
+    it('should return null values as an empty string', function(done){
+      var View = createView('<div>{{foo}}</div>').use(compiler);
+      var view = new View({
+        foo: null
+      });
+      dom.defer(function(){
+        assert(view.el.innerHTML === '');
+        done();
+      });
+    });
+
+    it('should return false values as an empty string', function(done){
+      var View = createView('<div>{{foo}}</div>').use(compiler);
+      var view = new View({
+        foo: false
+      });
+      dom.defer(function(){
+        assert(view.el.innerHTML === '');
+        done();
+      });
+    });
+
+    it('should return true values as an empty string', function(done){
+      var View = createView('<div>{{foo}}</div>').use(compiler);
+      var view = new View({
+        foo: true
+      });
+      dom.defer(function(){
+        assert(view.el.innerHTML === '');
+        done();
+      });
+    });
+
+    it('should update from an non-string value', function(done){
+      var View = createView('<div>{{foo}}</div>').use(compiler);
+      var view = new View({
+        foo: undefined
+      });
+      view.set('foo', 'bar');
+      dom.defer(function(){
+        assert(view.el.innerHTML === 'bar');
+        done();
+      });
+    });
+
   });
 
 

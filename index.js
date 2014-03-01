@@ -238,7 +238,15 @@ Compiler.prototype.hasInterpolation = function(str) {
 Compiler.prototype.processTextNode = function(node) {
   this.interpolate(node.data, function(val){
     dom.write(function(){
-      node.data = val;
+      if(val && val.nodeType) {
+        node.parentNode.replaceChild(val, node);
+        node = val;
+      }
+      else {
+        var text = document.createTextNode(typeof val === 'string' ? val : '');
+        node.parentNode.replaceChild(text, node);
+        node = text;
+      }
     });
   });
 };
