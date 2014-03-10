@@ -3,12 +3,9 @@
 
 [![Build Status](https://travis-ci.org/ripplejs/compiler.png?branch=master)](https://travis-ci.org/ripplejs/compiler)
 
-  Compile a view using a set of directives and bindings. Takes a view
-  that has an `el` and a `model`, walks through the DOM and binds any
-  custom attributes or elements.
+  Render a template and view using a set of directives and bindings. Walks through the DOM and binds any custom attributes or elements.
 
-  * Interpolate strings in text or attribute values and have them auto-update with model changes
-  * Add custom elements that are composed views
+  * Compose views
   * Add custom attributes
   * Toggles boolean attributes automatically eg. hidden="{{hidden}}"
 
@@ -24,15 +21,15 @@
 var compiler = new Compiler();
 
 // Add attributes
-compiler.addAttribute('data-text', function(view, node, attr, value){
+compiler.directive('data-text', function(view, node, attr, value){
 
 });
 
 // Add components
-compiler.addComponent('clock', ClockView);
+compiler.component('clock', ClockView);
 
-// Then compile a view
-compiler.compile(view);
+// Then render a template using a view
+var el = compiler.render('<clock time="{{now}}" />', view);
 ```
 
 ## License
