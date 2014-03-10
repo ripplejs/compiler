@@ -1,12 +1,11 @@
 var walk = require('dom-walk');
-var attributes = require('attributes');
 var emitter = require('emitter');
 var find = require('find');
 var isBoolean = require('is-boolean-attribute');
 var dom = require('fastdom');
-var Interpolator = require('interpolate');
 var domify = require('domify');
-
+var each = require('each');
+var attrs = require('attributes');
 
 /**
  * Attach the view to a DocumentFragment
@@ -27,10 +26,10 @@ function attachToFragment(el) {
  * a scope and process each node going down the tree. Whenever
  * it finds a node matching a directive it will process it.
  */
-function Compiler() {
+function Compiler(options) {
   this.components = [];
   this.directives = [];
-  this.interpolator = new Interpolator();
+  this.options = options;
 }
 
 
@@ -87,32 +86,6 @@ Compiler.prototype.directive = function(matches, fn) {
   return this;
 };
 
-
-/**
- * Add an expression filter
- *
- * @param {String} name
- * @param {Function} fn
- */
-Compiler.prototype.filter = function(name, fn) {
-  this.interpolator.filter(name, fn);
-  return this;
-};
-
-
-/**
- * Set the template delimiters
- *
- * @param {Regex} match
- *
- * @return {View}
- */
-Compiler.prototype.delimiters = function(match) {
-  this.interpolator.delimiters(match);
-  return this;
-};
-
-
 /**
  * Check if there's a component for this element
  *
@@ -147,7 +120,7 @@ Compiler.prototype.getAttributeBinding = function(attr) {
 Compiler.prototype.getBinding = function(name, bindings) {
   var matched = find(bindings, function(binding){
     if(typeof binding.matches === 'string') {
-      if(name === binding.matches) return binding;
+      if(name === binding.matches.toLowerCase()) return binding;
       return;
     }
     if(binding.matches.test(name)){
@@ -165,9 +138,11 @@ Compiler.prototype.getBinding = function(name, bindings) {
  *
  * @return {Element}
  */
-Compiler.prototype.render = function(view, el) {
+Compiler.prototype.render = function(template, view) {
   var self = this;
+  var el = domify(template);
   this.view = view;
+  this.root = el;
   attachToFragment(el);
   walk(el, function(node, next){
     if(node.nodeType === 3) {
@@ -178,51 +153,7 @@ Compiler.prototype.render = function(view, el) {
     }
     next();
   });
-  this.view = null;
-  return el;
-};
-
-
-/**
- * Run an interpolation on the string using the state. Whenever
- * the model changes it will render the string again
- *
- * @param {String} str
- * @param {Function} callback
- *
- * @return {Function} a function to unbind the interpolation
- */
-Compiler.prototype.interpolate = function(str, callback) {
-  var self = this;
-  var view = this.view;
-
-  if( this.hasInterpolation(str) === false ) {
-    return callback(str);
-  }
-
-  var attrs = this.interpolator.props(str);
-
-  function render() {
-    return self.interpolator.value(str, view.get(attrs));
-  }
-
-  callback(render());
-
-  view.change(attrs, function(){
-    callback(render());
-  });
-};
-
-
-/**
- * Check if a string has expressions
- *
- * @param {String} str
- *
- * @return {Boolean}
- */
-Compiler.prototype.hasInterpolation = function(str) {
-  return this.interpolator.has(str);
+  return this.root;
 };
 
 
@@ -236,7 +167,7 @@ Compiler.prototype.hasInterpolation = function(str) {
  * @return {void}
  */
 Compiler.prototype.processTextNode = function(node) {
-  this.interpolate(node.data, function(val){
+  this.view.interpolate(node.data, function(val){
     dom.write(function(){
       if(val && val.nodeType) {
         node.parentNode.replaceChild(val, node);
@@ -263,47 +194,9 @@ Compiler.prototype.processTextNode = function(node) {
  * @return {boolean}
  */
 Compiler.prototype.processNode = function(node) {
-  var view = this.view;
-
-  var Component = this.getComponentBinding(node);
-
-  if(!Component) {
-    return this.processAttributes(node);
-  }
-
-  var component = Component.create({
-    owner: view,
-    template: (node.innerHTML !== "") ? node.innerHTML : null
-  });
-
-  for (var i = node.attributes.length - 1; i >= 0; i--) {
-    var attr = node.attributes[i];
-
-    // Bind events
-    if(attr.name.indexOf('on-') === 0) {
-      var eventName = attr.name.replace('on-', '');
-      var method = attr.value;
-      var fn = view[method];
-      if(!fn) throw new Error('Missing method');
-      component.on(eventName, fn.bind(view));
-    }
-
-    // Bind properties
-    else {
-      this.interpolate(attr.value, function(val){
-        component.set(attr.name, val);
-      });
-    }
-  }
-
-  view.once('mount', function(){
-    component.mount(node, true);
-    if(node === this.el) this.el = component.el;
-  });
-
-  view.on('destroy', function(){
-    component.destroy();
-  });
+  var fn = this.getComponentBinding(node);
+  if(!fn) return this.processAttributes(node);
+  fn.call(this, node, this.view);
 };
 
 
@@ -320,17 +213,16 @@ Compiler.prototype.processNode = function(node) {
 Compiler.prototype.processAttributes = function(node) {
   var view = this.view;
   var self = this;
-  var attrs = attributes(node);
-  function process(attr){
+
+  each(attrs(node), function(attr, value){
     var binding = self.getAttributeBinding(attr);
     if(binding) {
-      binding.call(self, view, node, attr, attrs[attr]);
+      binding.call(self, view, node, attr, value);
     }
     else {
-      self.interpolateAttribute(node, attr);
+      self.interpolateAttribute(node, attr, value);
     }
-  }
-  Object.keys(attrs).forEach(process);
+  });
 };
 
 
@@ -344,9 +236,8 @@ Compiler.prototype.processAttributes = function(node) {
  * @api private
  * @return {void}
  */
-Compiler.prototype.interpolateAttribute = function(node, attr) {
-  var attrs = attributes(node);
-  this.interpolate(attrs[attr], function(val){
+Compiler.prototype.interpolateAttribute = function(node, attr, value) {
+  this.view.interpolate(value, function(val){
     dom.write(function(){
       if(isBoolean(attr) && !val) {
         node.removeAttribute(attr);
@@ -358,82 +249,4 @@ Compiler.prototype.interpolateAttribute = function(node, attr) {
   });
 };
 
-
-module.exports = function(View){
-
-  /**
-   * Compiler that renders binds the model to
-   * the DOM elements and manages the bindings
-   *
-   * @type {Compiler}
-   */
-  var compiler = new Compiler();
-
-
-  /**
-   * Add a component
-   *
-   * @param {String} match
-   * @param {Function} fn
-   *
-   * @return {View}
-   */
-  View.compose = function(match, fn) {
-    compiler.component(match, fn);
-    return this;
-  };
-
-
-  /**
-   * Add a directive
-   *
-   * @param {String|Regex} match
-   * @param {Function} fn
-   *
-   * @return {View}
-   */
-  View.directive = function(match, fn) {
-    compiler.directive(match, fn);
-    return this;
-  };
-
-
-  /**
-   * Add an interpolation filter
-   *
-   * @param {String} name
-   * @param {Function} fn
-   *
-   * @return {View}
-   */
-  View.filter = function(name, fn) {
-    compiler.filter(name, fn);
-    return this;
-  };
-
-
-  /**
-   * Set the expression delimiters
-   *
-   * @param {Regex} match
-   *
-   * @return {View}
-   */
-  View.delimiters = function(match) {
-    compiler.delimiters(match);
-    return this;
-  };
-
-
-  /**
-   * Render the view using the compiler
-   *
-   * @return {Element}
-   */
-  View.prototype.render = function() {
-    var el = domify(this.template);
-    return compiler.render(this, el);
-  };
-
-
-};
+module.exports = Compiler;
