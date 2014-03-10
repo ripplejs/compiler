@@ -140,10 +140,9 @@ Compiler.prototype.getBinding = function(name, bindings) {
  */
 Compiler.prototype.render = function(template, view) {
   var self = this;
-  var el = domify(template);
   this.view = view;
-  this.root = el;
-  attachToFragment(el);
+  var el = domify(template);
+  var fragment = attachToFragment(el);
   walk(el, function(node, next){
     if(node.nodeType === 3) {
       self.processTextNode(node);
@@ -153,7 +152,7 @@ Compiler.prototype.render = function(template, view) {
     }
     next();
   });
-  return this.root;
+  return fragment.firstChild;
 };
 
 

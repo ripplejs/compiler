@@ -60,6 +60,14 @@ describe('compiler', function(){
       });
       compiler.render('<div><dummy>{{foo}}</dummy></div>', view);
     });
+    it('should render components as the root node', function () {
+      var test = document.createElement('div');
+      compiler.component('dummy', function(node){
+        node.parentNode.replaceChild(test, node);
+      });
+      var el = compiler.render('<dummy></dummy>', view);
+      assert(el === test);
+    });
   });
 
   describe('text interpolation', function () {
